@@ -15,7 +15,7 @@ public static class NetworkLogEndpoints
             string? search, int? page, int? pageSize, ISqlConnectionFactory factory, CancellationToken ct) =>
         {
             var pageNum = page is null or < 1 ? 1 : page.Value;
-            var size = pageSize is null or < 1 ? 10 : Math.Min(pageSize.Value, 1000);
+            var size = pageSize is null or < 1 ? 5 : Math.Min(pageSize.Value, 1000);
 
             var p = new DynamicParameters();
             p.Add("@search", string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%");

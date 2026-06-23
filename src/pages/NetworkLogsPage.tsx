@@ -1,7 +1,7 @@
-import { Globe, Network, Search } from 'lucide-react';
+import { Activity, Globe, Network, Search, ShieldCheck, ShieldX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Column, DataTable } from '../components/DataTable';
-import { Badge, CenterMessage, EmptyState, TextInput } from '../components/ui';
+import { Badge, CenterMessage, EmptyState, KpiCard, TextInput } from '../components/ui';
 import { dataSource } from '../lib/dataSource';
 import { formatNumber, formatRelative } from '../lib/format';
 import { getIpPrefix } from '../lib/ip';
@@ -35,6 +35,17 @@ export function NetworkLogsPage() {
     if (!term) return logs;
     return logs.filter((l) => [l.sourceAddress, l.countryName ?? '', l.url].join(' ').toLowerCase().includes(term));
   }, [data, search]);
+
+  const stats = useMemo(() => {
+    const logs = data?.logs ?? [];
+    const whitelisted = logs.filter((l) => allowedPrefixes.has(getIpPrefix(l.sourceAddress))).length;
+    return {
+      count: logs.length,
+      usage: logs.reduce((s, l) => s + l.usageCount, 0),
+      whitelisted,
+      notWhitelisted: logs.length - whitelisted,
+    };
+  }, [data, allowedPrefixes]);
 
   const columns: Column<NetworkLog>[] = [
     {
@@ -110,6 +121,13 @@ export function NetworkLogsPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">Network IP Logs</h1>
         <p className="mt-0.5 text-xs text-slate-500">Edge / source traffic, flagged against active whitelist ranges.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <KpiCard icon={Network} tone="sky" label="Total Logs" value={formatNumber(stats.count)} sub="source records" />
+        <KpiCard icon={Activity} tone="teal" label="Total Usage" value={formatNumber(stats.usage)} sub="hits" />
+        <KpiCard icon={ShieldCheck} tone="emerald" label="Whitelisted" value={formatNumber(stats.whitelisted)} sub="matched active range" />
+        <KpiCard icon={ShieldX} tone="rose" label="Not Whitelisted" value={formatNumber(stats.notWhitelisted)} sub="no active range" />
       </div>
 
       <div className="flex items-center gap-2">

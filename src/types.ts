@@ -4,7 +4,7 @@ export type Environment = 'production' | 'staging' | 'development';
 
 export type ResponseStatus = 'Success' | 'Error';
 
-export type ViewKey = 'dashboard' | 'whitelist' | 'application-logs' | 'network-logs' | 'ingestion';
+export type ViewKey = 'dashboard' | 'whitelist' | 'ip-match' | 'application-logs' | 'network-logs' | 'ingestion';
 
 export interface IngestionSource {
   id: number;
@@ -81,6 +81,7 @@ export interface ApplicationLog {
   id: number;
   clientIp: string;
   buName: string;
+  appName: string | null;
   functionName: string;
   responseStatus: ResponseStatus;
   httpStatusCode: number | null;
@@ -102,6 +103,45 @@ export interface NetworkLog {
   createdAt: string;
 }
 
+export interface IpMatch {
+  ip: string;
+  appUsage: number;
+  appRequests: number;
+  networkUsage: number;
+  networkRequests: number;
+  totalUsage: number;
+  buNames: string[];
+  appNames: string[];
+  servers: string[];
+  buName: string | null;
+  appName: string | null;
+  server: string | null;
+  country: string | null;
+  isWhitelisted: boolean;
+  whitelistStatus: string | null;
+  whitelistCidr: string | null;
+  lastSeen: string;
+}
+
+export interface IpMatchFacets {
+  bu: string[];
+  country: string[];
+}
+
+export interface IpMatchStats {
+  matched: number;
+  aboveThreshold: number;
+  notWhitelisted: number;
+  combinedUsage: number;
+}
+
+export interface AppLogFacets {
+  clientIp: string[];
+  appName: string[];
+  functionName: string[];
+  databaseName: string[];
+}
+
 export interface BuSummary {
   buName: string;
   totalUsage: number;
@@ -110,6 +150,7 @@ export interface BuSummary {
   errorCount: number;
   serverCount: number;
   servers: string[];
+  apps: string[];
   lastSeen: string | null;
 }
 

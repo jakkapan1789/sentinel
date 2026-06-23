@@ -1,13 +1,12 @@
-import { Activity, ArrowRight, Building2, CheckCircle2, Database, Search, ServerCog, XCircle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Activity, ArrowRight, Building2, CheckCircle2, Database, Layers, Search, ServerCog, X, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Column, DataTable } from '../components/DataTable';
-import { Badge, CenterMessage, EmptyState, TextInput } from '../components/ui';
+import { Badge, CenterMessage, EmptyState, KpiCard, TextInput } from '../components/ui';
 import { dataSource } from '../lib/dataSource';
 import { formatDateTime, formatNumber, formatRelative } from '../lib/format';
 import { useRefreshVersion } from '../lib/refresh';
 import { useAsync } from '../lib/useAsync';
-import type { ApplicationLog, BuSummary, PagedResult, ResponseStatus } from '../types';
+import type { ApplicationLog, AppLogFacets, BuSummary, PagedResult, ResponseStatus } from '../types';
 
 type SummaryRow = BuSummary & { id: string };
 
@@ -23,21 +22,33 @@ export function ApplicationLogsPage({
   const version = useRefreshVersion();
   const [search, setSearch] = useState('');
 
-  // Detail (server-side) paging state.
+  // Detail (server-side) paging state. Column filters are multi-select.
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [status, setStatus] = useState<'all' | ResponseStatus>('all');
+  const [pageSize, setPageSize] = useState(5);
+  // Per-column value-list filters, keyed by column key (multi-select, like the BU & Network tables).
+  const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
   const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'createdAt', direction: 'desc' });
 
   // Reset detail controls whenever we switch BU (or back to summary).
   useEffect(() => {
     setSearch('');
     setPage(1);
-    setStatus('all');
+    setColFilters({});
     setSort({ key: 'createdAt', direction: 'desc' });
   }, [selectedBu]);
 
   const summary = useAsync(() => dataSource.buSummary(), [version]);
+
+  // Distinct values per column for the open BU → option lists for the value-checklist filters.
+  const facets = useAsync(
+    () =>
+      selectedBu
+        ? dataSource.appLogFacets(selectedBu)
+        : Promise.resolve<AppLogFacets>({ clientIp: [], appName: [], functionName: [], databaseName: [] }),
+    [selectedBu, version],
+  );
+
+  const csv = (key: string) => (colFilters[key]?.length ? colFilters[key].join(',') : undefined);
 
   const detail = useAsync(
     () =>
@@ -45,13 +56,17 @@ export function ApplicationLogsPage({
         ? dataSource.appLogsPage({
             bu: selectedBu,
             search: search.trim() || undefined,
-            responseStatus: status === 'all' ? undefined : status,
+            responseStatus: csv('responseStatus'),
+            app: csv('appName'),
+            clientIp: csv('clientIp'),
+            functionName: csv('functionName'),
+            databaseName: csv('databaseName'),
             sort: `${sort.key}:${sort.direction}`,
             page,
             pageSize,
           })
         : Promise.resolve<PagedResult<ApplicationLog>>({ items: [], total: 0, page: 1, pageSize }),
-    [selectedBu, search, status, sort.key, sort.direction, page, pageSize, version],
+    [selectedBu, search, colFilters, sort.key, sort.direction, page, pageSize, version],
   );
 
   const summaryRows = useMemo<SummaryRow[]>(() => {
@@ -60,7 +75,20 @@ export function ApplicationLogsPage({
     return term ? rows.filter((r) => r.buName.toLowerCase().includes(term)) : rows;
   }, [summary.data, search]);
 
+  const summaryStats = useMemo(() => {
+    const rows = summary.data ?? [];
+    const txns = rows.reduce((s, r) => s + r.transactions, 0);
+    const success = rows.reduce((s, r) => s + r.successCount, 0);
+    return {
+      usage: rows.reduce((s, r) => s + r.totalUsage, 0),
+      txns,
+      rate: txns ? (success / txns) * 100 : 0,
+      bus: rows.length,
+    };
+  }, [summary.data]);
+
   const buStat = (summary.data ?? []).find((s) => s.buName === selectedBu);
+  const activeFilters = Object.values(colFilters).reduce((n, v) => n + v.length, 0);
   const successRate = buStat && buStat.transactions ? (buStat.successCount / buStat.transactions) * 100 : 0;
   const errorRate = buStat && buStat.transactions ? (buStat.errorCount / buStat.transactions) * 100 : 0;
 
@@ -119,12 +147,21 @@ export function ApplicationLogsPage({
     {
       key: 'clientIp',
       header: 'Client IP',
+      filterable: true,
       sortValue: (row) => row.clientIp,
       render: (row) => <span className="font-mono text-xs font-semibold text-slate-900">{row.clientIp}</span>,
     },
     {
+      key: 'appName',
+      header: 'Application',
+      filterable: true,
+      sortValue: (row) => row.appName ?? '',
+      render: (row) => <span className="font-medium text-slate-700">{row.appName || '—'}</span>,
+    },
+    {
       key: 'functionName',
       header: 'Function',
+      filterable: true,
       sortValue: (row) => row.functionName,
       render: (row) => (
         <div>
@@ -138,6 +175,7 @@ export function ApplicationLogsPage({
     {
       key: 'responseStatus',
       header: 'Response Status',
+      filterable: true,
       sortValue: (row) => row.responseStatus,
       render: (row) => <Badge tone={statusTone(row.responseStatus)} dot>{row.responseStatus}</Badge>,
     },
@@ -145,6 +183,7 @@ export function ApplicationLogsPage({
       key: 'databaseName',
       header: 'Database',
       hideBelow: 'md',
+      filterable: true,
       sortValue: (row) => row.databaseName ?? '',
       render: (row) => (
         <span className="inline-flex items-center gap-1.5 text-slate-600">
@@ -169,6 +208,12 @@ export function ApplicationLogsPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Application IP Logs</h1>
           <p className="mt-0.5 text-xs text-slate-500">Usage summarized by business unit. Open a unit to inspect each transaction.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiCard icon={Activity} tone="teal" label="Total Usage" value={formatNumber(summaryStats.usage)} sub="across all BUs" />
+          <KpiCard icon={Layers} tone="sky" label="Transactions" value={formatNumber(summaryStats.txns)} sub="total requests" />
+          <KpiCard icon={CheckCircle2} tone="emerald" label="Success Rate" value={`${summaryStats.rate.toFixed(1)}%`} sub="all business units" />
+          <KpiCard icon={Building2} tone="violet" label="Business Units" value={formatNumber(summaryStats.bus)} sub="active units" />
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-full sm:max-w-xs">
@@ -231,22 +276,18 @@ export function ApplicationLogsPage({
             className="pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1 rounded-xl bg-slate-100/80 p-1 ring-1 ring-slate-200/70">
-          {(['all', 'Success', 'Error'] as const).map((value) => (
-            <button
-              key={value}
-              onClick={() => {
-                setStatus(value);
-                setPage(1);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                status === value ? 'bg-white text-slate-900 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {value === 'all' ? 'All' : value}
-            </button>
-          ))}
-        </div>
+        {activeFilters > 0 && (
+          <button
+            onClick={() => {
+              setColFilters({});
+              setPage(1);
+            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 ring-1 ring-teal-100 transition hover:bg-teal-100"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear {activeFilters} filter{activeFilters > 1 ? 's' : ''}
+          </button>
+        )}
         <span className="text-xs text-slate-400 sm:ml-auto">{formatNumber(total)} transactions</span>
       </div>
 
@@ -274,6 +315,20 @@ export function ApplicationLogsPage({
                 setSort((prev) => (prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }));
                 setPage(1);
               },
+              filters: {
+                options: {
+                  clientIp: facets.data?.clientIp ?? [],
+                  appName: facets.data?.appName ?? [],
+                  functionName: facets.data?.functionName ?? [],
+                  responseStatus: ['Success', 'Error'],
+                  databaseName: facets.data?.databaseName ?? [],
+                },
+                selected: colFilters,
+                onChange: (key, values) => {
+                  setColFilters((prev) => ({ ...prev, [key]: values }));
+                  setPage(1);
+                },
+              },
             }}
             empty={<EmptyState icon={<ServerCog className="h-6 w-6" />} title="No transactions" description="No application logs match this business unit and search." />}
           />
@@ -283,28 +338,3 @@ export function ApplicationLogsPage({
   );
 }
 
-const kpiTiles: Record<string, string> = {
-  teal: 'from-teal-500 to-emerald-500',
-  emerald: 'from-emerald-500 to-green-500',
-  rose: 'from-rose-500 to-pink-500',
-  sky: 'from-sky-500 to-blue-500',
-};
-
-function KpiCard({ icon: Icon, tone, label, value, sub }: {
-  icon: LucideIcon; tone: keyof typeof kpiTiles; label: string; value: string; sub: string;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-xl bg-white p-4 ring-1 ring-slate-200/70">
-      <div className="flex items-center justify-between">
-        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white ${kpiTiles[tone]}`}>
-          <Icon className="h-4.5 w-4.5" />
-        </span>
-        <span className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</span>
-      </div>
-      <div>
-        <p className="text-xs font-semibold text-slate-700">{label}</p>
-        <p className="text-[11px] text-slate-400">{sub}</p>
-      </div>
-    </div>
-  );
-}

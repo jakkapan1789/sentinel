@@ -88,6 +88,42 @@ public static class WhitelistEndpoints
             return Results.Ok(updated);
         }).RequireAuthorization(Scopes.Admin);
 
+        // Bulk add — used by the IP Match page to whitelist several matched IPs at once.
+        // Skips entries that violate the unique (ip_cidr, app, server, env) constraint.
+        group.MapPost("/bulk", async (
+            WhitelistUpsert[] body, ClaimsPrincipal user, ISqlConnectionFactory factory, CancellationToken ct) =>
+        {
+            var actor = user.Identity?.Name ?? "api";
+            using var db = await factory.OpenAsync(ct);
+            int created = 0, skipped = 0;
+
+            foreach (var entry in body)
+            {
+                var (start, end) = IpRange.FromCidr(entry.IpCidr);
+                var p = ToParams(entry, actor);
+                p.Add("@Start", start);
+                p.Add("@End", end);
+                try
+                {
+                    await db.ExecuteAsync(new CommandDefinition(
+                        """
+                        DECLARE @buId INT = (SELECT bu_id FROM dbo.business_unit WHERE bu_name = @BuName);
+                        IF @buId IS NULL BEGIN INSERT dbo.business_unit (bu_name) VALUES (@BuName); SET @buId = SCOPE_IDENTITY(); END
+                        INSERT dbo.ip_whitelist
+                            (ip_cidr, ip_start, ip_end, app_name, server, env, bu_id, bu_name, status, owner, notes, created_by, updated_by)
+                        VALUES (@IpCidr, @Start, @End, @AppName, @Server, @Env, @buId, @BuName, @Status, @Owner, @Notes, @Actor, @Actor);
+                        """, p, cancellationToken: ct));
+                    created++;
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
+                {
+                    skipped++; // duplicate entry — already whitelisted for this app/server/env
+                }
+            }
+
+            return Results.Ok(new WhitelistBulkResult(created, skipped));
+        }).RequireAuthorization(Scopes.Admin);
+
         group.MapDelete("/{id:int}", async (int id, ISqlConnectionFactory factory, CancellationToken ct) =>
         {
             using var db = await factory.OpenAsync(ct);

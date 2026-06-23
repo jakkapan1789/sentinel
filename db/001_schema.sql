@@ -54,6 +54,7 @@ BEGIN
         client_ip        VARCHAR(45)   NOT NULL,
         bu_id            INT           NULL,
         bu_name          NVARCHAR(120) NOT NULL,
+        app_name         NVARCHAR(200) NULL,
         function_name    NVARCHAR(200) NOT NULL,
         response_status  VARCHAR(16)   NOT NULL,
         http_status_code SMALLINT      NULL,
@@ -147,6 +148,7 @@ CREATE TYPE dbo.AppLogTvp AS TABLE (
     source_event_id  UNIQUEIDENTIFIER NOT NULL,
     client_ip        VARCHAR(45)   NOT NULL,
     bu_name          NVARCHAR(120) NOT NULL,
+    app_name         NVARCHAR(200) NULL,
     function_name    NVARCHAR(200) NOT NULL,
     response_status  VARCHAR(16)   NOT NULL,
     http_status_code SMALLINT      NULL,
@@ -189,10 +191,10 @@ BEGIN
 
     -- 2) Insert only new events (idempotent by source_event_id).
     INSERT dbo.app_log_ip
-        (source_event_id, client_ip, bu_id, bu_name, function_name, response_status,
+        (source_event_id, client_ip, bu_id, bu_name, app_name, function_name, response_status,
          http_status_code, database_name, duration_ms, usage_count, server_name,
          http_method, endpoint, trace_id, message, created_at)
-    SELECT r.source_event_id, r.client_ip, b.bu_id, r.bu_name, r.function_name, r.response_status,
+    SELECT r.source_event_id, r.client_ip, b.bu_id, r.bu_name, r.app_name, r.function_name, r.response_status,
            r.http_status_code, r.database_name, r.duration_ms, ISNULL(r.usage_count,0), r.server_name,
            r.http_method, r.endpoint, r.trace_id, r.message, r.created_at
     FROM @rows r

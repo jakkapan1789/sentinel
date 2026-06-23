@@ -178,6 +178,63 @@ BEGIN
 END
 GO
 
+/* ---------- Summary: application dimension per BU (filter source) ----- */
+IF OBJECT_ID('dbo.app_application_daily') IS NULL
+CREATE TABLE dbo.app_application_daily (
+    summary_date  DATE          NOT NULL,
+    bu_name       NVARCHAR(120) NOT NULL,
+    app_name      NVARCHAR(200) NOT NULL,
+    request_count BIGINT NOT NULL,
+    total_usage   BIGINT NOT NULL,
+    CONSTRAINT PK_app_application_daily PRIMARY KEY (summary_date, bu_name, app_name)
+);
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_rollup_app_apps
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    DECLARE @last BIGINT, @newMax BIGINT;
+
+    BEGIN TRAN;
+        SELECT @last = last_id FROM dbo.rollup_watermark WITH (UPDLOCK, HOLDLOCK) WHERE rollup_name = 'app_apps';
+        IF @last IS NULL
+        BEGIN
+            INSERT dbo.rollup_watermark (rollup_name, last_id) VALUES ('app_apps', 0);
+            SET @last = 0;
+        END
+
+        SELECT id, CAST(created_at AS DATE) AS summary_date, bu_name, app_name, usage_count
+        INTO #apps
+        FROM dbo.app_log_ip
+        WHERE id > @last;
+
+        SET @newMax = (SELECT MAX(id) FROM #apps);
+
+        IF @newMax IS NOT NULL
+        BEGIN
+            ;WITH agg AS (
+                SELECT summary_date, bu_name, app_name, COUNT_BIG(*) AS req, SUM(usage_count) AS usage_sum
+                FROM #apps
+                WHERE app_name IS NOT NULL
+                GROUP BY summary_date, bu_name, app_name
+            )
+            MERGE dbo.app_application_daily AS t
+            USING agg AS s
+               ON t.summary_date = s.summary_date AND t.bu_name = s.bu_name AND t.app_name = s.app_name
+            WHEN MATCHED THEN UPDATE SET
+                request_count = t.request_count + s.req, total_usage = t.total_usage + s.usage_sum
+            WHEN NOT MATCHED BY TARGET THEN INSERT
+                (summary_date, bu_name, app_name, request_count, total_usage)
+                VALUES (s.summary_date, s.bu_name, s.app_name, s.req, s.usage_sum);
+
+            UPDATE dbo.rollup_watermark SET last_id = @newMax, updated_at = SYSUTCDATETIME() WHERE rollup_name = 'app_apps';
+        END
+    COMMIT;
+END
+GO
+
 /* ---------- Rollup: network monthly (incremental) -------------------- */
 CREATE OR ALTER PROCEDURE dbo.usp_rollup_network_monthly
 AS
@@ -248,6 +305,7 @@ BEGIN
     SET NOCOUNT ON;
     TRUNCATE TABLE dbo.app_log_summary_daily;
     TRUNCATE TABLE dbo.app_server_daily;
+    TRUNCATE TABLE dbo.app_application_daily;
     TRUNCATE TABLE dbo.network_log_summary_monthly;
     DELETE FROM dbo.rollup_watermark;
 END
@@ -259,7 +317,7 @@ GO
      (the "Refresh summary" button in the dashboard calls it).
    - For automatic refresh, point any external scheduler at it, e.g.:
        * Windows Task Scheduler / cron running:
-           sqlcmd -S <srv> -d SentinelWhitelistCenter -Q "EXEC dbo.usp_rollup_app_daily; EXEC dbo.usp_rollup_app_servers; EXEC dbo.usp_rollup_network_monthly;"
+           sqlcmd -S <srv> -d SentinelWhitelistCenter -Q "EXEC dbo.usp_rollup_app_daily; EXEC dbo.usp_rollup_app_servers; EXEC dbo.usp_rollup_app_apps; EXEC dbo.usp_rollup_network_monthly;"
        * or curl POST .../api/v1/summary/refresh with a read/admin token.
    - Retention (run daily from the same scheduler):
            EXEC dbo.usp_purge_old_partitions @days_to_keep = 60;

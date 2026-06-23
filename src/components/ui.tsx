@@ -1,4 +1,5 @@
 import { Check, ChevronDown, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -341,6 +342,44 @@ export function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+const kpiTiles = {
+  teal: 'from-teal-500 to-emerald-500',
+  emerald: 'from-emerald-500 to-green-500',
+  rose: 'from-rose-500 to-pink-500',
+  sky: 'from-sky-500 to-blue-500',
+  amber: 'from-amber-400 to-orange-500',
+  violet: 'from-violet-500 to-purple-500',
+};
+
+export function KpiCard({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  sub,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof kpiTiles;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl bg-white p-4 ring-1 ring-slate-200/70">
+      <div className="flex items-center justify-between">
+        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white ${kpiTiles[tone]}`}>
+          <Icon className="h-4.5 w-4.5" />
+        </span>
+        <span className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</span>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-slate-700">{label}</p>
+        {sub && <p className="text-[11px] text-slate-400">{sub}</p>}
+      </div>
+    </div>
   );
 }
 

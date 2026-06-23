@@ -58,7 +58,7 @@ public static class DashboardEndpoints
         {
             using var db = await factory.OpenAsync(ct);
             await db.ExecuteAsync(new CommandDefinition(
-                "EXEC dbo.usp_rollup_app_daily; EXEC dbo.usp_rollup_app_servers; EXEC dbo.usp_rollup_network_monthly;",
+                "EXEC dbo.usp_rollup_app_daily; EXEC dbo.usp_rollup_app_servers; EXEC dbo.usp_rollup_app_apps; EXEC dbo.usp_rollup_network_monthly; EXEC dbo.usp_rollup_app_ips; EXEC dbo.usp_rollup_network_ips;",
                 commandTimeout: 600, cancellationToken: ct));
             return Results.Ok(new { refreshed = true });
         }).RequireAuthorization(Scopes.Admin);

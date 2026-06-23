@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   ChevronRight,
+  GitCompareArrows,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -35,6 +36,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
     items: [
       { key: 'dashboard', label: 'Dashboard', description: 'Overview & posture', icon: LayoutDashboard },
       { key: 'whitelist', label: 'Whitelist', description: 'Allowed connections', icon: ShieldCheck },
+      { key: 'ip-match', label: 'IP Match', description: 'Reconcile app vs network', icon: GitCompareArrows },
       { key: 'application-logs', label: 'Application IP Logs', description: 'Service-side traffic', icon: ServerCog },
       { key: 'network-logs', label: 'Network IP Logs', description: 'Edge / source traffic', icon: Network },
     ],

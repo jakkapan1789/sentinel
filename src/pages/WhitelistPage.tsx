@@ -1,10 +1,10 @@
-import { Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock3, Pencil, Plus, Search, ShieldCheck, ShieldX, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Column, DataTable } from '../components/DataTable';
 import { EntityForm, FieldDef } from '../components/EntityForm';
-import { Badge, Button, CenterMessage, ConfirmDialog, EmptyState, IconButton, TextInput } from '../components/ui';
+import { Badge, Button, CenterMessage, ConfirmDialog, EmptyState, IconButton, KpiCard, TextInput } from '../components/ui';
 import { dataSource } from '../lib/dataSource';
-import { formatRelative } from '../lib/format';
+import { formatNumber, formatRelative } from '../lib/format';
 import { isValidIpOrCidr } from '../lib/ip';
 import { useRefreshVersion } from '../lib/refresh';
 import { useAsync } from '../lib/useAsync';
@@ -98,6 +98,16 @@ export function WhitelistPage() {
       return statusOk && textOk;
     });
   }, [entries, search, statusFilter]);
+
+  const stats = useMemo(
+    () => ({
+      total: entries.length,
+      active: entries.filter((e) => e.status === 'active').length,
+      pending: entries.filter((e) => e.status === 'pending').length,
+      disabled: entries.filter((e) => e.status === 'disabled').length,
+    }),
+    [entries],
+  );
 
   const columns: Column<WhitelistEntry>[] = [
     {
@@ -194,6 +204,13 @@ export function WhitelistPage() {
         <Button onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" /> Add Entry
         </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <KpiCard icon={ShieldCheck} tone="teal" label="Total Entries" value={formatNumber(stats.total)} sub="all environments" />
+        <KpiCard icon={CheckCircle2} tone="emerald" label="Active" value={formatNumber(stats.active)} sub="currently enforced" />
+        <KpiCard icon={Clock3} tone="amber" label="Pending" value={formatNumber(stats.pending)} sub="awaiting review" />
+        <KpiCard icon={ShieldX} tone="rose" label="Disabled" value={formatNumber(stats.disabled)} sub="blocked / archived" />
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

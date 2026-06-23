@@ -14,6 +14,7 @@ public sealed record AppLogIngest(
     Guid? SourceEventId,
     string ClientIp,
     string BuName,
+    string? AppName,
     string FunctionName,
     string ResponseStatus,      // "Success" | "Error"
     short? HttpStatusCode,
@@ -45,6 +46,7 @@ public sealed record AppLogDto(
     long Id,
     string ClientIp,
     string BuName,
+    string? AppName,
     string FunctionName,
     string ResponseStatus,
     short? HttpStatusCode,
@@ -63,7 +65,15 @@ public sealed record BuSummaryDto(
     long ErrorCount,
     int ServerCount,
     string[] Servers,
+    string[] Apps,
     DateTime? LastSeen);
+
+// Distinct values per filterable column, scoped to a BU (drives the detail value-checklist filters).
+public sealed record AppLogFacetsDto(
+    string[] ClientIp,
+    string[] AppName,
+    string[] FunctionName,
+    string[] DatabaseName);
 
 public sealed record NetworkLogDto(
     long Id,
@@ -98,6 +108,32 @@ public sealed record WhitelistUpsert(
     string Status,
     string? Owner,
     string? Notes);
+
+public sealed record WhitelistBulkResult(int Created, int Skipped);
+
+// One reconciled IP that appears in BOTH application and network logs.
+public sealed record IpMatchDto(
+    string Ip,
+    long AppUsage,
+    long AppRequests,
+    long NetworkUsage,
+    long NetworkRequests,
+    long TotalUsage,
+    string[] BuNames,
+    string[] AppNames,
+    string[] Servers,
+    string? BuName,       // dominant (highest-usage) values → whitelist prefill
+    string? AppName,
+    string? Server,
+    string? Country,
+    bool IsWhitelisted,
+    string? WhitelistStatus,
+    string? WhitelistCidr,
+    DateTime LastSeen);
+
+public sealed record IpMatchFacetsDto(string[] Bu, string[] Country);
+
+public sealed record IpMatchStatsDto(long Matched, long AboveThreshold, long NotWhitelisted, long CombinedUsage);
 
 public sealed record IngestionSourceDto(
     int Id,

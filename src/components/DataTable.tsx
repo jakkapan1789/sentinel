@@ -40,7 +40,7 @@ const hideClasses: Record<NonNullable<Column<unknown>['hideBelow']>, string> = {
   xl: 'hidden xl:table-cell',
 };
 
-const DEFAULT_PAGE_SIZES = [10, 25, 50, 100];
+const DEFAULT_PAGE_SIZES = [5, 10, 25, 50, 100];
 
 function filterTextsOf<T>(column: Column<T>, row: T): string[] {
   if (column.filterValues) return column.filterValues(row);
@@ -59,6 +59,24 @@ export type ServerMode = {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onSortChange: (key: string) => void;
+  /**
+   * Server-driven Excel-style column filters. The parent supplies the option list
+   * (distinct values can't be derived from a single page) and current selections,
+   * and applies them by re-querying the API.
+   */
+  filters?: {
+    options: Record<string, string[]>;
+    selected: Record<string, string[]>;
+    onChange: (key: string, values: string[]) => void;
+  };
+};
+
+/** Optional multi-select column. The parent owns the selection set. */
+export type SelectionMode<T> = {
+  isSelected: (row: T) => boolean;
+  onToggle: (row: T) => void;
+  allOnPageSelected: boolean;
+  onToggleAll: (checked: boolean) => void;
 };
 
 export function DataTable<T extends Identifiable>({
@@ -68,8 +86,9 @@ export function DataTable<T extends Identifiable>({
   pageSizeOptions = DEFAULT_PAGE_SIZES,
   initialPageSize,
   onRowClick,
-  bodyHeight = '33rem',
+  bodyHeight = '19rem',
   server,
+  selection,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -80,6 +99,7 @@ export function DataTable<T extends Identifiable>({
   /** Fixed height of the scroll area so the table never shrinks to row count. */
   bodyHeight?: string;
   server?: ServerMode;
+  selection?: SelectionMode<T>;
 }) {
   const [localSortKey, setLocalSortKey] = useState<string | null>(null);
   const [localDirection, setLocalDirection] = useState<'asc' | 'desc'>('asc');
@@ -170,6 +190,17 @@ export function DataTable<T extends Identifiable>({
         <table className="w-full min-w-[640px] text-left text-xs">
           <thead className="sticky top-0 z-10 bg-slate-50/90 text-[10px] uppercase tracking-wider text-slate-500 backdrop-blur">
             <tr className="border-b border-slate-200">
+              {selection && (
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    checked={selection.allOnPageSelected}
+                    onChange={(e) => selection.onToggleAll(e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer accent-teal-600"
+                  />
+                </th>
+              )}
               {columns.map((column) => {
                 const isActive = sortKey === column.key;
                 const Icon = !isActive ? ArrowUpDown : direction === 'asc' ? ArrowUp : ArrowDown;
@@ -203,6 +234,14 @@ export function DataTable<T extends Identifiable>({
                           onChange={(values) => handleFilterChange(column.key, values)}
                         />
                       )}
+                      {column.filterable && server?.filters?.options[column.key] && (
+                        <ColumnFilter
+                          label={column.header}
+                          options={server.filters.options[column.key]}
+                          selected={server.filters.selected[column.key] ?? []}
+                          onChange={(values) => server.filters!.onChange(column.key, values)}
+                        />
+                      )}
                     </div>
                   </th>
                 );
@@ -214,8 +253,21 @@ export function DataTable<T extends Identifiable>({
               <tr
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={`bg-white transition-colors hover:bg-teal-50/40 ${onRowClick ? 'cursor-pointer' : ''}`}
+                className={`bg-white transition-colors hover:bg-teal-50/40 ${
+                  selection?.isSelected(row) ? 'bg-teal-50/40' : ''
+                } ${onRowClick ? 'cursor-pointer' : ''}`}
               >
+                {selection && (
+                  <td className="w-10 px-4 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label="Select row"
+                      checked={selection.isSelected(row)}
+                      onChange={() => selection.onToggle(row)}
+                      className="h-3.5 w-3.5 cursor-pointer accent-teal-600"
+                    />
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td
                     key={column.key}
@@ -230,7 +282,7 @@ export function DataTable<T extends Identifiable>({
             ))}
             {total === 0 && (
               <tr>
-                <td colSpan={columns.length} className="p-0">
+                <td colSpan={columns.length + (selection ? 1 : 0)} className="p-0">
                   {empty}
                 </td>
               </tr>

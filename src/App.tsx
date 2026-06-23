@@ -3,12 +3,13 @@ import type { Crumb } from './components/Layout';
 import { Layout } from './components/Layout';
 import { ApplicationLogsPage } from './pages/ApplicationLogsPage';
 import { Dashboard } from './pages/Dashboard';
+import { IpMatchPage } from './pages/IpMatchPage';
 import { NetworkLogsPage } from './pages/NetworkLogsPage';
 import { IngestionPage } from './pages/IngestionPage';
 import { WhitelistPage } from './pages/WhitelistPage';
 import type { ViewKey } from './types';
 
-const VIEWS: ViewKey[] = ['dashboard', 'whitelist', 'application-logs', 'network-logs', 'ingestion'];
+const VIEWS: ViewKey[] = ['dashboard', 'whitelist', 'ip-match', 'application-logs', 'network-logs', 'ingestion'];
 
 function readRoute(): { view: ViewKey; bu: string | null } {
   const raw = window.location.hash.replace(/^#\/?/, '');
@@ -59,6 +60,7 @@ function App() {
     <Layout active={view} onNavigate={navigate} breadcrumbs={breadcrumbs}>
       {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
       {view === 'whitelist' && <WhitelistPage />}
+      {view === 'ip-match' && <IpMatchPage />}
       {view === 'application-logs' && <ApplicationLogsPage selectedBu={appLogBu} onSelectBu={setAppLogBu} />}
       {view === 'network-logs' && <NetworkLogsPage />}
       {view === 'ingestion' && <IngestionPage />}

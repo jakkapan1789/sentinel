@@ -14,6 +14,7 @@ const SAMPLE_PAYLOAD = `[
   {
     "clientIp": "172.27.10.25",
     "buName": "Retail Banking",
+    "appName": "Customer Profile Service",
     "functionName": "GetCustomerProfile",
     "responseStatus": "Success",
     "httpStatusCode": 200,

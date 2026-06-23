@@ -5,8 +5,12 @@
  */
 import type {
   ApplicationLog,
+  AppLogFacets,
   BuSummary,
   DashboardData,
+  IpMatch,
+  IpMatchFacets,
+  IpMatchStats,
   NetworkLog,
   PagedResult,
   IngestionSourceCreate,
@@ -17,6 +21,17 @@ import type {
   WhitelistEntry,
   WhitelistInput,
 } from '../types';
+
+export type IpMatchQuery = {
+  minUsage?: number;
+  bu?: string;
+  country?: string;
+  whitelisted?: string;
+  search?: string;
+  sort?: string;
+  page?: number;
+  pageSize?: number;
+};
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const TOKEN = import.meta.env.VITE_API_TOKEN ?? '';
@@ -56,10 +71,16 @@ export const api = {
 
   buSummary: () => request<BuSummary[]>('/api/v1/app-logs/bu-summary'),
 
+  appLogFacets: (bu: string) => request<AppLogFacets>(`/api/v1/app-logs/facets${qs({ bu })}`),
+
   appLogs: (params: {
     bu?: string;
     search?: string;
     responseStatus?: string;
+    app?: string;
+    clientIp?: string;
+    functionName?: string;
+    databaseName?: string;
     sort?: string;
     page?: number;
     pageSize?: number;
@@ -79,6 +100,16 @@ export const api = {
 
   deleteWhitelist: (id: number) =>
     request<void>(`/api/v1/whitelist/${id}`, { method: 'DELETE' }),
+
+  bulkAddWhitelist: (body: WhitelistInput[]) =>
+    request<{ created: number; skipped: number }>('/api/v1/whitelist/bulk', { method: 'POST', body: JSON.stringify(body) }),
+
+  ipMatches: (params: IpMatchQuery) => request<PagedResult<IpMatch>>(`/api/v1/ip-matches${qs(params)}`),
+
+  ipMatchStats: (params: Omit<IpMatchQuery, 'sort' | 'page' | 'pageSize'>) =>
+    request<IpMatchStats>(`/api/v1/ip-matches/stats${qs(params)}`),
+
+  ipMatchFacets: () => request<IpMatchFacets>('/api/v1/ip-matches/facets'),
 
   ingestionSources: () => request<IngestionSource[]>('/api/v1/ingestion/sources'),
 

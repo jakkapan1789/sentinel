@@ -45,6 +45,11 @@ const functions = [
   'AuthorizeCard', 'SubmitLoanApplication', 'IssuePolicy', 'RebalancePortfolio', 'ExportAuditTrail',
   'RefreshSession', 'ValidateLimit', 'PostLedgerEntry',
 ];
+const applications = [
+  'Customer Profile Service', 'Payment Batch Orchestrator', 'Fraud Scoring Engine', 'Lakehouse Sync',
+  'Partner Lookup API', 'Batch Control', 'Card Authorization', 'Loan Origination', 'Policy Admin',
+  'Wealth Rebalancer', 'Compliance Exporter', 'Digital Session Gateway',
+];
 const responseStatuses: readonly ResponseStatus[] = ['Success', 'Success', 'Success', 'Success', 'Success', 'Error'];
 const httpSuccess = [200, 200, 201, 204];
 const httpError = [400, 401, 403, 404, 409, 500, 503];
@@ -68,6 +73,7 @@ function generateApplicationLogs(count: number): ApplicationLog[] {
       id: index + 1,
       clientIp: `${buPrefix[bu]}.${intBetween(1, 60, r)}.${intBetween(1, 250, r)}`,
       buName: bu,
+      appName: pick(applications, r),
       functionName: pick(functions, r),
       responseStatus: status,
       httpStatusCode: status === 'Success' ? pick(httpSuccess, r) : pick(httpError, r),

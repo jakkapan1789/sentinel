@@ -77,6 +77,7 @@ public static class IngestEndpoints
         t.Columns.Add("source_event_id", typeof(Guid));
         t.Columns.Add("client_ip", typeof(string));
         t.Columns.Add("bu_name", typeof(string));
+        t.Columns.Add("app_name", typeof(string));
         t.Columns.Add("function_name", typeof(string));
         t.Columns.Add("response_status", typeof(string));
         t.Columns.Add("http_status_code", typeof(short));
@@ -94,7 +95,7 @@ public static class IngestEndpoints
         {
             var status = string.Equals(r.ResponseStatus, "Success", StringComparison.OrdinalIgnoreCase) ? "Success" : "Error";
             t.Rows.Add(
-                r.SourceEventId ?? Guid.NewGuid(), r.ClientIp, r.BuName, r.FunctionName, status,
+                r.SourceEventId ?? Guid.NewGuid(), r.ClientIp, r.BuName, (object?)r.AppName ?? DBNull.Value, r.FunctionName, status,
                 (object?)r.HttpStatusCode ?? DBNull.Value, (object?)r.DatabaseName ?? DBNull.Value,
                 (object?)r.DurationMs ?? DBNull.Value, (object?)r.UsageCount ?? DBNull.Value,
                 (object?)r.ServerName ?? DBNull.Value, (object?)r.HttpMethod ?? DBNull.Value,
