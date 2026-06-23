@@ -1,0 +1,99 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/jakkapanpakeerat/Programming/@projects/codex/sentinel-whitelist-center/backend/SentinelWhitelist.Api/SentinelWhitelist.Api.csproj": {}
+  },
+  "projects": {
+    "/Users/jakkapanpakeerat/Programming/@projects/codex/sentinel-whitelist-center/backend/SentinelWhitelist.Api/SentinelWhitelist.Api.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/jakkapanpakeerat/Programming/@projects/codex/sentinel-whitelist-center/backend/SentinelWhitelist.Api/SentinelWhitelist.Api.csproj",
+        "projectName": "SentinelWhitelist.Api",
+        "projectPath": "/Users/jakkapanpakeerat/Programming/@projects/codex/sentinel-whitelist-center/backend/SentinelWhitelist.Api/SentinelWhitelist.Api.csproj",
+        "packagesPath": "/Users/jakkapanpakeerat/.nuget/packages/",
+        "outputPath": "/Users/jakkapanpakeerat/Programming/@projects/codex/sentinel-whitelist-center/backend/SentinelWhitelist.Api/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/jakkapanpakeerat/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet/10.0.103/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Dapper": {
+              "target": "Package",
+              "version": "[2.1.35, )"
+            },
+            "Microsoft.Data.SqlClient": {
+              "target": "Package",
+              "version": "[5.2.2, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.7.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.osx-arm64",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.103/libexec/sdk/10.0.103/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

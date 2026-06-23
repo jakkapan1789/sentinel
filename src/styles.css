@@ -1,22 +1,149 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Noto Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 :root {
-  color: #1f2937;
-  background: #f7f8fb;
+  color: #0f172a;
+  font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f8fafc;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+/* Tailwind v4 no longer sets pointer cursors on controls — restore them for
+   anything interactive. Explicit `cursor-*` utilities still override these. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  label[for],
+  select:not(:disabled),
+  summary,
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='file'] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+}
+
+::selection {
+  background: rgba(20, 184, 166, 0.22);
+}
+
+/* Slim scrollbars for the dense data tables. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+@keyframes swc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes swc-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes swc-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: swc-fade-in 0.18s ease-out;
+}
+
+.animate-pop-in {
+  animation: swc-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-page-in {
+  animation: swc-page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Page transition: cascade the section blocks in on mount for a smooth feel. */
+.page-enter > * {
+  animation: swc-page-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.page-enter > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.page-enter > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.page-enter > *:nth-child(3) {
+  animation-delay: 0.14s;
+}
+.page-enter > *:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.page-enter > *:nth-child(n + 5) {
+  animation-delay: 0.24s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-pop-in,
+  .animate-page-in,
+  .page-enter > * {
+    animation: none;
+  }
 }
