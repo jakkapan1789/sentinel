@@ -12,28 +12,33 @@ namespace SentinelWhitelist.Api.Endpoints;
 /// </summary>
 public static class IpMatchEndpoints
 {
-    // CTE producing one row per matched IP. Filters/order/paging are appended per request.
+    // Network-log driven: one row per network source IP. Flag the ones that also appear in
+    // application logs (matched), and HIDE any IP already covered by a whitelist entry.
+    // Filters/order/paging are appended per request.
     private const string MatchCte = """
-        ;WITH app AS (
-            SELECT client_ip AS ip, MIN(ip_bin) AS ip_bin,
-                   SUM(total_usage) AS app_usage, SUM(request_count) AS app_req, MAX(last_seen) AS app_last
-            FROM dbo.app_ip_daily GROUP BY client_ip
-        ),
-        net AS (
-            SELECT source_address AS ip,
+        ;WITH net AS (
+            SELECT source_address AS ip, MIN(ip_bin) AS ip_bin,
                    SUM(total_usage) AS net_usage, SUM(request_count) AS net_req, MAX(last_seen) AS net_last
             FROM dbo.network_ip_monthly GROUP BY source_address
         ),
+        app AS (
+            SELECT client_ip AS ip,
+                   SUM(total_usage) AS app_usage, SUM(request_count) AS app_req, MAX(last_seen) AS app_last
+            FROM dbo.app_ip_daily GROUP BY client_ip
+        ),
         m AS (
-            SELECT a.ip, a.app_usage, a.app_req, n.net_usage, n.net_req,
-                   (a.app_usage + n.net_usage) AS total_usage,
-                   CASE WHEN a.app_last > n.net_last THEN a.app_last ELSE n.net_last END AS last_seen,
-                   wl.ip_cidr AS whitelist_cidr, wl.status AS whitelist_status
-            FROM app a
-            INNER JOIN net n ON n.ip = a.ip
+            SELECT n.ip,
+                   ISNULL(a.app_usage, 0) AS app_usage, ISNULL(a.app_req, 0) AS app_req,
+                   n.net_usage, n.net_req,
+                   (ISNULL(a.app_usage, 0) + n.net_usage) AS total_usage,
+                   CAST(CASE WHEN a.ip IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS matched,
+                   CASE WHEN a.app_last IS NOT NULL AND a.app_last > n.net_last THEN a.app_last ELSE n.net_last END AS last_seen,
+                   wl.ip_cidr AS whitelist_cidr
+            FROM net n
+            LEFT JOIN app a ON a.ip = n.ip
             OUTER APPLY (
-                SELECT TOP 1 w.ip_cidr, w.status FROM dbo.ip_whitelist w
-                WHERE w.status IN ('active', 'pending') AND w.ip_start <= a.ip_bin AND w.ip_end >= a.ip_bin
+                SELECT TOP 1 w.ip_cidr FROM dbo.ip_whitelist w
+                WHERE w.status IN ('active', 'pending') AND w.ip_start <= n.ip_bin AND w.ip_end >= n.ip_bin
                 ORDER BY CASE w.status WHEN 'active' THEN 0 ELSE 1 END, w.ip_end DESC
             ) wl
         )
@@ -44,13 +49,13 @@ public static class IpMatchEndpoints
         var group = app.MapGroup("/api/v1/ip-matches").RequireAuthorization(Scopes.Read);
 
         group.MapGet("/", async (
-            long? minUsage, string? bu, string? country, string? whitelisted, string? search, string? sort,
+            long? minUsage, string? bu, string? country, string? matched, string? search, string? sort,
             int? page, int? pageSize, ISqlConnectionFactory factory, CancellationToken ct) =>
         {
             var pageNum = page is null or < 1 ? 1 : page.Value;
             var size = pageSize is null or < 1 ? 10 : Math.Min(pageSize.Value, 1000);
 
-            var (where, p) = BuildWhere(minUsage, bu, country, whitelisted, search);
+            var (where, p) = BuildWhere(minUsage, bu, country, matched, search);
             p.Add("@off", (pageNum - 1) * size);
             p.Add("@ps", size);
 
@@ -61,9 +66,8 @@ public static class IpMatchEndpoints
             var rows = (await db.QueryAsync<MatchRow>(new CommandDefinition(
                 $"""
                 {MatchCte}
-                SELECT ip, app_usage AS AppUsage, app_req AS AppRequests, net_usage AS NetworkUsage,
-                       net_req AS NetworkRequests, total_usage AS TotalUsage, last_seen AS LastSeen,
-                       whitelist_cidr AS WhitelistCidr, whitelist_status AS WhitelistStatus
+                SELECT ip, matched AS Matched, app_usage AS AppUsage, app_req AS AppRequests, net_usage AS NetworkUsage,
+                       net_req AS NetworkRequests, total_usage AS TotalUsage, last_seen AS LastSeen
                 FROM m {where}
                 ORDER BY {ResolveOrderBy(sort)}
                 OFFSET @off ROWS FETCH NEXT @ps ROWS ONLY;
@@ -74,7 +78,7 @@ public static class IpMatchEndpoints
             var countryByIp = await LoadCountries(db, ips, ct);
 
             var items = rows.Select(r => new IpMatchDto(
-                r.Ip, r.AppUsage, r.AppRequests, r.NetworkUsage, r.NetworkRequests, r.TotalUsage,
+                r.Ip, r.Matched, r.AppUsage, r.AppRequests, r.NetworkUsage, r.NetworkRequests, r.TotalUsage,
                 buByIp.GetValueOrDefault(r.Ip, Array.Empty<string>()),
                 appByIp.GetValueOrDefault(r.Ip, Array.Empty<string>()),
                 srvByIp.GetValueOrDefault(r.Ip, Array.Empty<string>()),
@@ -82,26 +86,25 @@ public static class IpMatchEndpoints
                 domAppByIp.GetValueOrDefault(r.Ip),
                 domSrvByIp.GetValueOrDefault(r.Ip),
                 countryByIp.GetValueOrDefault(r.Ip),
-                string.Equals(r.WhitelistStatus, "active", StringComparison.OrdinalIgnoreCase),
-                r.WhitelistStatus, r.WhitelistCidr, r.LastSeen)).ToList();
+                r.LastSeen)).ToList();
 
             return Results.Ok(new PagedResult<IpMatchDto> { Items = items, Total = (int)total, Page = pageNum, PageSize = size });
         });
 
         group.MapGet("/stats", async (
-            long? minUsage, string? bu, string? country, string? whitelisted, string? search,
+            long? minUsage, string? bu, string? country, string? search,
             ISqlConnectionFactory factory, CancellationToken ct) =>
         {
-            var (where, p) = BuildWhere(null, bu, country, whitelisted, search); // context filters, ignore threshold here
-            p.Add("@minUsage2", minUsage ?? 0);
+            // Context filters (excl. the matched toggle) so matched/unmatched counts stay meaningful.
+            var (where, p) = BuildWhere(minUsage, bu, country, null, search);
 
             using var db = await factory.OpenAsync(ct);
             var s = await db.QuerySingleAsync<IpMatchStatsDto>(new CommandDefinition(
                 $"""
                 {MatchCte}
-                SELECT COUNT_BIG(*) AS Matched,
-                       SUM(CAST(CASE WHEN total_usage >= @minUsage2 THEN 1 ELSE 0 END AS BIGINT)) AS AboveThreshold,
-                       SUM(CAST(CASE WHEN whitelist_cidr IS NULL THEN 1 ELSE 0 END AS BIGINT)) AS NotWhitelisted,
+                SELECT COUNT_BIG(*) AS Total,
+                       SUM(CAST(CASE WHEN matched = 1 THEN 1 ELSE 0 END AS BIGINT)) AS Matched,
+                       SUM(CAST(CASE WHEN matched = 0 THEN 1 ELSE 0 END AS BIGINT)) AS Unmatched,
                        ISNULL(SUM(total_usage), 0) AS CombinedUsage
                 FROM m {where};
                 """, p, cancellationToken: ct));
@@ -121,10 +124,11 @@ public static class IpMatchEndpoints
     }
 
     private static (string where, DynamicParameters p) BuildWhere(
-        long? minUsage, string? bu, string? country, string? whitelisted, string? search)
+        long? minUsage, string? bu, string? country, string? matched, string? search)
     {
         var p = new DynamicParameters();
-        var conditions = new List<string>();
+        // Whitelisted IPs are never shown — they already have a decision.
+        var conditions = new List<string> { "whitelist_cidr IS NULL" };
 
         if (minUsage is > 0)
         {
@@ -136,8 +140,8 @@ public static class IpMatchEndpoints
             conditions.Add("ip LIKE @search");
             p.Add("@search", $"%{search.Trim()}%");
         }
-        if (whitelisted == "covered") conditions.Add("whitelist_cidr IS NOT NULL");
-        else if (whitelisted == "uncovered") conditions.Add("whitelist_cidr IS NULL");
+        if (matched == "matched") conditions.Add("matched = 1");
+        else if (matched == "unmatched") conditions.Add("matched = 0");
 
         var bus = SplitCsv(bu);
         if (bus is not null)
@@ -214,7 +218,7 @@ public static class IpMatchEndpoints
         ["appUsage"] = "app_usage",
         ["networkUsage"] = "net_usage",
         ["lastSeen"] = "last_seen",
-        ["whitelisted"] = "whitelist_cidr",
+        ["matched"] = "matched",
     };
 
     private static string ResolveOrderBy(string? sort)
@@ -242,13 +246,12 @@ public static class IpMatchEndpoints
     private sealed class MatchRow
     {
         public string Ip { get; set; } = "";
+        public bool Matched { get; set; }
         public long AppUsage { get; set; }
         public long AppRequests { get; set; }
         public long NetworkUsage { get; set; }
         public long NetworkRequests { get; set; }
         public long TotalUsage { get; set; }
         public DateTime LastSeen { get; set; }
-        public string? WhitelistCidr { get; set; }
-        public string? WhitelistStatus { get; set; }
     }
 }

@@ -39,3 +39,10 @@ export function formatNumber(value: number): string {
   if (!Number.isFinite(value)) return '-';
   return value.toLocaleString('en-US');
 }
+
+/** Human-friendly latency from a millisecond duration (e.g. 42 → "42 ms", 1500 → "1.5 s"). */
+export function formatDuration(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms)) return '—';
+  if (ms < 1000) return `${formatNumber(Math.round(ms))} ms`;
+  return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} s`;
+}

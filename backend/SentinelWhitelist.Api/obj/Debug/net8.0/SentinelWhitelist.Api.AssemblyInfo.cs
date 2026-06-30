@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SentinelWhitelist.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+991fe9425aaf8a63f96eaca439d1016b5df750cf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+56e51a34ccf855207fe927da7a9e8883c3111455")]
 [assembly: System.Reflection.AssemblyProductAttribute("SentinelWhitelist.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SentinelWhitelist.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -86,7 +86,7 @@ export function DataTable<T extends Identifiable>({
   pageSizeOptions = DEFAULT_PAGE_SIZES,
   initialPageSize,
   onRowClick,
-  bodyHeight = '19rem',
+  bodyHeight,
   server,
   selection,
 }: {
@@ -96,7 +96,7 @@ export function DataTable<T extends Identifiable>({
   pageSizeOptions?: number[];
   initialPageSize?: number;
   onRowClick?: (row: T) => void;
-  /** Fixed height of the scroll area so the table never shrinks to row count. */
+  /** Optional fixed height for the scroll area. When unset, the table grows to fit all rows. */
   bodyHeight?: string;
   server?: ServerMode;
   selection?: SelectionMode<T>;
@@ -186,7 +186,7 @@ export function DataTable<T extends Identifiable>({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="overflow-auto" style={{ height: bodyHeight }}>
+      <div className="overflow-x-auto" style={bodyHeight ? { height: bodyHeight, overflowY: 'auto' } : undefined}>
         <table className="w-full min-w-[640px] text-left text-xs">
           <thead className="sticky top-0 z-10 bg-slate-50/90 text-[10px] uppercase tracking-wider text-slate-500 backdrop-blur">
             <tr className="border-b border-slate-200">
@@ -507,11 +507,11 @@ function ColumnFilter({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Contains…"
-              className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-2 text-xs font-normal text-slate-700 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/15"
+              className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-2 text-[11px] font-normal text-slate-700 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/15"
             />
           </div>
 
-          <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+          <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50">
             <input
               type="checkbox"
               checked={allVisibleSelected}
@@ -521,14 +521,14 @@ function ColumnFilter({
             Select all
           </label>
 
-          <div className="mt-1 max-h-52 overflow-y-auto">
+          <div className="mt-1 h-52 overflow-y-auto">
             {visibleOptions.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">No matches</p>
+              <p className="px-2 py-4 text-center text-[11px] text-slate-400">No matches</p>
             ) : (
               visibleOptions.map((option) => (
                 <label
                   key={option || '__blank__'}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-normal text-slate-600 hover:bg-slate-50"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-normal text-slate-600 hover:bg-slate-50"
                 >
                   <input
                     type="checkbox"

@@ -46,6 +46,7 @@ app.MapIngestEndpoints();
 app.MapAppLogEndpoints();
 app.MapNetworkLogEndpoints();
 app.MapWhitelistEndpoints();
+app.MapWhitelistAckEndpoints();
 app.MapIpMatchEndpoints();
 app.MapDashboardEndpoints();
 app.MapIngestionSourceEndpoints();

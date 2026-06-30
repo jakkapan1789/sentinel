@@ -89,8 +89,8 @@ const chips = (values: string[]) => (
 export function IpMatchPage() {
   const version = useRefreshVersion();
 
-  const [minUsage, setMinUsage] = useState(50);
-  const [whitelisted, setWhitelisted] = useState<'all' | 'covered' | 'uncovered'>('all');
+  const [minUsage, setMinUsage] = useState(0);
+  const [matchFilter, setMatchFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'totalUsage', direction: 'desc' });
@@ -107,7 +107,7 @@ export function IpMatchPage() {
     minUsage,
     bu: csv('bu'),
     country: csv('country'),
-    whitelisted: whitelisted === 'all' ? undefined : whitelisted,
+    matched: matchFilter === 'all' ? undefined : matchFilter,
     search: search.trim() || undefined,
   };
 
@@ -118,13 +118,13 @@ export function IpMatchPage() {
 
   const stats = useAsync(
     () => dataSource.ipMatchStats(ctx),
-    [version, minUsage, ctx.bu, ctx.country, ctx.whitelisted, ctx.search],
+    [version, minUsage, ctx.bu, ctx.country, ctx.matched, ctx.search],
   );
 
   const matches = useAsync(
     () =>
       dataSource.ipMatches({ ...ctx, sort: `${sort.key}:${sort.direction}`, page, pageSize }) as Promise<PagedResult<IpMatch>>,
-    [version, minUsage, ctx.bu, ctx.country, ctx.whitelisted, ctx.search, sort.key, sort.direction, page, pageSize],
+    [version, minUsage, ctx.bu, ctx.country, ctx.matched, ctx.search, sort.key, sort.direction, page, pageSize],
   );
 
   const rows = useMemo<MatchRow[]>(() => (matches.data?.items ?? []).map((m) => ({ ...m, id: m.ip })), [matches.data]);
@@ -168,12 +168,10 @@ export function IpMatchPage() {
         <div>
           <span className="font-mono text-xs font-semibold text-slate-900">{r.ip}</span>
           <span className="mt-0.5 block">
-            {r.whitelistStatus === 'active' ? (
-              <Badge tone="emerald" dot>whitelisted</Badge>
-            ) : r.whitelistStatus === 'pending' ? (
-              <Badge tone="amber" dot>pending</Badge>
+            {r.matched ? (
+              <Badge tone="emerald" dot>matched app log</Badge>
             ) : (
-              <Badge tone="rose" dot>not whitelisted</Badge>
+              <Badge tone="slate" dot>no app match</Badge>
             )}
           </span>
         </div>
@@ -238,23 +236,18 @@ export function IpMatchPage() {
       key: 'action',
       header: '',
       align: 'right',
-      render: (r) =>
-        r.whitelistStatus === 'active' ? (
-          <span className="text-[11px] font-medium text-emerald-600">In whitelist</span>
-        ) : r.whitelistStatus === 'pending' ? (
-          <span className="text-[11px] font-medium text-amber-600">Pending review</span>
-        ) : (
-          <button
-            onClick={() => setSingle(r)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 transition hover:bg-teal-100"
-          >
-            <Plus className="h-3 w-3" /> Whitelist
-          </button>
-        ),
+      render: (r) => (
+        <button
+          onClick={() => setSingle(r)}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 transition hover:bg-teal-100"
+        >
+          <Plus className="h-3 w-3" /> Whitelist
+        </button>
+      ),
     },
   ];
 
-  const activeFilterCount = (colFilters.bu?.length ?? 0) + (colFilters.country?.length ?? 0) + (whitelisted !== 'all' ? 1 : 0);
+  const activeFilterCount = (colFilters.bu?.length ?? 0) + (colFilters.country?.length ?? 0) + (matchFilter !== 'all' ? 1 : 0);
 
   const runBulk = async (shared: { env: Environment; status: WhitelistStatus; owner: string; notes: string }) => {
     setBusy(true);
@@ -283,15 +276,15 @@ export function IpMatchPage() {
           IP Match
         </h1>
         <p className="mt-0.5 text-xs text-slate-500">
-          IPs seen in both application and network logs. Review usage, then add the ones you trust to the whitelist.
+          Network source IPs, flagged where they match application traffic. Already-whitelisted IPs are hidden — pick the ones you trust and add them.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard icon={GitCompareArrows} tone="teal" label="Matched IPs" value={formatNumber(s?.matched ?? 0)} sub="in both log sources" />
-        <KpiCard icon={Activity} tone="sky" label={`Usage ≥ ${formatNumber(minUsage)}`} value={formatNumber(s?.aboveThreshold ?? 0)} sub="above threshold" />
-        <KpiCard icon={ShieldX} tone="rose" label="Not Whitelisted" value={formatNumber(s?.notWhitelisted ?? 0)} sub="pending a decision" />
-        <KpiCard icon={ShieldCheck} tone="emerald" label="Combined Usage" value={formatNumber(s?.combinedUsage ?? 0)} sub="app + network" />
+        <KpiCard icon={GitCompareArrows} tone="sky" label="Network IPs" value={formatNumber(s?.total ?? 0)} sub="not yet whitelisted" />
+        <KpiCard icon={ShieldCheck} tone="emerald" label="Matched" value={formatNumber(s?.matched ?? 0)} sub="also in app logs" />
+        <KpiCard icon={ShieldX} tone="amber" label="Unmatched" value={formatNumber(s?.unmatched ?? 0)} sub="no app traffic" />
+        <KpiCard icon={Activity} tone="teal" label="Combined Usage" value={formatNumber(s?.combinedUsage ?? 0)} sub="app + network" />
       </div>
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -329,18 +322,18 @@ export function IpMatchPage() {
         </div>
 
         <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 ring-1 ring-slate-200/70">
-          {(['all', 'uncovered', 'covered'] as const).map((value) => (
+          {(['all', 'matched', 'unmatched'] as const).map((value) => (
             <button
               key={value}
               onClick={() => {
-                setWhitelisted(value);
+                setMatchFilter(value);
                 setPage(1);
               }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                whitelisted === value ? 'bg-white text-slate-900 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition ${
+                matchFilter === value ? 'bg-white text-slate-900 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {value === 'all' ? 'All' : value === 'uncovered' ? 'Not whitelisted' : 'Whitelisted'}
+              {value}
             </button>
           ))}
         </div>
@@ -349,7 +342,7 @@ export function IpMatchPage() {
           <button
             onClick={() => {
               setColFilters({});
-              setWhitelisted('all');
+              setMatchFilter('all');
               setPage(1);
             }}
             className="text-xs font-medium text-teal-700 hover:underline"
@@ -357,7 +350,7 @@ export function IpMatchPage() {
             Clear filters
           </button>
         )}
-        <span className="text-xs text-slate-400 lg:ml-auto">{formatNumber(total)} matches</span>
+        <span className="text-xs text-slate-400 lg:ml-auto">{formatNumber(total)} IPs</span>
       </div>
 
       {selected.size > 0 && (

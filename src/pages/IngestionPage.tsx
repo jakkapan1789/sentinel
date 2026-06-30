@@ -10,7 +10,7 @@ import type { IngestionSecret, IngestionSource } from '../types';
 
 const BASE = apiBaseUrl || '{API_BASE_URL}';
 
-const SAMPLE_PAYLOAD = `[
+const SAMPLE_APP = `[
   {
     "clientIp": "172.27.10.25",
     "buName": "Retail Banking",
@@ -25,6 +25,41 @@ const SAMPLE_PAYLOAD = `[
     "createdAt": "2026-06-22T03:00:00Z"
   }
 ]`;
+
+const SAMPLE_NETWORK = `[
+  {
+    "sourceAddress": "203.150.20.14",
+    "countryCode": "TH",
+    "countryName": "Thailand",
+    "url": "/api/partner/lookup",
+    "periodMonth": "2026-06-01",
+    "usageCount": 1240,
+    "createdAt": "2026-06-22T03:00:00Z"
+  }
+]`;
+
+type EndpointSpec = { kind: string; title: string; description: string; sample: string };
+
+const ENDPOINTS: EndpointSpec[] = [
+  {
+    kind: 'app-logs',
+    title: 'Application IP Logs',
+    description: 'Service-side request logs — client IP, function, response status.',
+    sample: SAMPLE_APP,
+  },
+  {
+    kind: 'network-logs',
+    title: 'Network IP Logs',
+    description: 'Edge / source traffic per month — source IP, country, URL.',
+    sample: SAMPLE_NETWORK,
+  },
+];
+
+const buildCurl = (kind: string, sample: string) =>
+  `curl -X POST ${BASE}/api/v1/ingestion/${kind} \\
+  -H "Authorization: Bearer <source token>" \\
+  -H "Content-Type: application/json" \\
+  -d '${sample}'`;
 
 function CopyButton({
   text,
@@ -53,6 +88,39 @@ function CopyButton({
       {done ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : <Copy className="h-2.5 w-2.5" />}
       {!iconOnly && (done ? 'Copied' : label)}
     </button>
+  );
+}
+
+function EndpointCard({ kind, title, description, sample }: EndpointSpec) {
+  const url = `${BASE}/api/v1/ingestion/${kind}`;
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl ring-1 ring-slate-200/70">
+      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+        <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">POST</span>
+        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-700">{url}</code>
+        <CopyButton iconOnly text={url} label="Copy URL" />
+      </div>
+
+      <div className="px-3 pt-2.5">
+        <p className="text-xs font-semibold text-slate-800">{title}</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">{description}</p>
+      </div>
+
+      <div className="px-3 pb-3 pt-2">
+        <div className="overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200/70">
+          <div className="flex items-center justify-between border-b border-slate-200/70 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sample payload</span>
+            <CopyButton text={sample} label="Copy JSON" />
+          </div>
+          <pre className="max-h-56 overflow-auto px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-700">{sample}</pre>
+        </div>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-2">
+        <span className="text-[11px] text-slate-400">Send a JSON array (batched)</span>
+        <CopyButton text={buildCurl(kind, sample)} label="Copy cURL" />
+      </div>
+    </div>
   );
 }
 
@@ -107,11 +175,6 @@ export function IngestionPage() {
     }
   };
 
-  const curl = `curl -X POST ${BASE}/api/v1/ingestion/app-logs \\
-  -H "Authorization: Bearer <source token>" \\
-  -H "Content-Type: application/json" \\
-  -d '${SAMPLE_PAYLOAD}'`;
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 animate-page-in">
       <div>
@@ -121,21 +184,19 @@ export function IngestionPage() {
 
       {/* Endpoints */}
       <section className="rounded-2xl bg-white p-4 ring-1 ring-slate-200/70">
-        <h2 className="mb-3 text-sm font-semibold tracking-tight text-slate-800">Ingestion Endpoints</h2>
-        <div>
-          {['app-logs', 'network-logs'].map((kind) => (
-            <div key={kind} className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
-              <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">POST</span>
-              <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-700">{BASE}/api/v1/ingestion/{kind}</code>
-              <CopyButton text={`${BASE}/api/v1/ingestion/${kind}`} />
-            </div>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold tracking-tight text-slate-800">Ingestion Endpoints</h2>
+          <span className="text-[11px] text-slate-500">
+            Auth: <code className="font-mono">Authorization: Bearer &lt;source token&gt;</code>
+          </span>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Each source token is scoped to ingestion. POST a JSON array of records to the matching endpoint.
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {ENDPOINTS.map((ep) => (
+            <EndpointCard key={ep.kind} {...ep} />
           ))}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[11px] text-slate-500">
-              Header: <code className="font-mono">Authorization: Bearer &lt;source token&gt;</code>
-            </span>
-            <CopyButton text={curl} label="Copy cURL" />
-          </div>
         </div>
       </section>
 

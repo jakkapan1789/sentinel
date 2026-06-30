@@ -73,6 +73,7 @@ public sealed record AppLogFacetsDto(
     string[] ClientIp,
     string[] AppName,
     string[] FunctionName,
+    string[] ServerName,
     string[] DatabaseName);
 
 public sealed record NetworkLogDto(
@@ -111,9 +112,32 @@ public sealed record WhitelistUpsert(
 
 public sealed record WhitelistBulkResult(int Created, int Skipped);
 
-// One reconciled IP that appears in BOTH application and network logs.
+// ---- Whitelist acknowledgement (confirm) flow ----
+public sealed record WhitelistAckCreate(
+    int[] EntryIds,
+    string? Recipient,
+    string? Subject,
+    string? Intro);
+
+public sealed record WhitelistAckDto(
+    int Id,
+    string Token,
+    string Status,
+    string? Recipient,
+    string? Subject,
+    string ConfirmUrl,
+    string Html,                 // server-rendered email body (table + confirm button)
+    int ItemCount,
+    int ActivatedCount,
+    string CreatedBy,
+    DateTime CreatedAt,
+    DateTime? AcknowledgedAt,
+    string? AcknowledgedNote);
+
+// A network source IP (whitelisted ones are excluded). Matched = it also appears in app logs.
 public sealed record IpMatchDto(
     string Ip,
+    bool Matched,
     long AppUsage,
     long AppRequests,
     long NetworkUsage,
@@ -126,14 +150,11 @@ public sealed record IpMatchDto(
     string? AppName,
     string? Server,
     string? Country,
-    bool IsWhitelisted,
-    string? WhitelistStatus,
-    string? WhitelistCidr,
     DateTime LastSeen);
 
 public sealed record IpMatchFacetsDto(string[] Bu, string[] Country);
 
-public sealed record IpMatchStatsDto(long Matched, long AboveThreshold, long NotWhitelisted, long CombinedUsage);
+public sealed record IpMatchStatsDto(long Total, long Matched, long Unmatched, long CombinedUsage);
 
 public sealed record IngestionSourceDto(
     int Id,

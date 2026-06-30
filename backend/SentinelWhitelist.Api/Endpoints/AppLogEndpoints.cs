@@ -82,13 +82,14 @@ public static class AppLogEndpoints
                 await Distinct("client_ip"),
                 await Distinct("app_name"),
                 await Distinct("function_name"),
+                await Distinct("server_name"),
                 await Distinct("database_name")));
         });
 
         // Paged transactions, optionally scoped to a BU (drives the detail table).
         group.MapGet("/", async (
             string? bu, string? search, string? responseStatus, string? app,
-            string? clientIp, string? functionName, string? databaseName, string? sort,
+            string? clientIp, string? functionName, string? serverName, string? databaseName, string? sort,
             int? page, int? pageSize, ISqlConnectionFactory factory, CancellationToken ct) =>
         {
             var pageNum = page is null or < 1 ? 1 : page.Value;
@@ -135,6 +136,12 @@ public static class AppLogEndpoints
                 conditions.Add("function_name IN @functionNames");
                 p.Add("@functionNames", functionNames);
             }
+            var serverNames = SplitCsv(serverName);
+            if (serverNames is not null)
+            {
+                conditions.Add("server_name IN @serverNames");
+                p.Add("@serverNames", serverNames);
+            }
             var databaseNames = SplitCsv(databaseName);
             if (databaseNames is not null)
             {
@@ -171,8 +178,10 @@ public static class AppLogEndpoints
         ["appName"] = "app_name",
         ["functionName"] = "function_name",
         ["responseStatus"] = "response_status",
+        ["serverName"] = "server_name",
         ["databaseName"] = "database_name",
         ["usageCount"] = "usage_count",
+        ["durationMs"] = "duration_ms",
         ["createdAt"] = "created_at",
     };
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Column, DataTable } from '../components/DataTable';
 import { Badge, CenterMessage, EmptyState, KpiCard, TextInput } from '../components/ui';
 import { dataSource } from '../lib/dataSource';
-import { formatDateTime, formatNumber, formatRelative } from '../lib/format';
+import { formatDateTime, formatDuration, formatNumber, formatRelative } from '../lib/format';
 import { useRefreshVersion } from '../lib/refresh';
 import { useAsync } from '../lib/useAsync';
 import type { ApplicationLog, AppLogFacets, BuSummary, PagedResult, ResponseStatus } from '../types';
@@ -44,7 +44,7 @@ export function ApplicationLogsPage({
     () =>
       selectedBu
         ? dataSource.appLogFacets(selectedBu)
-        : Promise.resolve<AppLogFacets>({ clientIp: [], appName: [], functionName: [], databaseName: [] }),
+        : Promise.resolve<AppLogFacets>({ clientIp: [], appName: [], functionName: [], serverName: [], databaseName: [] }),
     [selectedBu, version],
   );
 
@@ -60,6 +60,7 @@ export function ApplicationLogsPage({
             app: csv('appName'),
             clientIp: csv('clientIp'),
             functionName: csv('functionName'),
+            serverName: csv('serverName'),
             databaseName: csv('databaseName'),
             sort: `${sort.key}:${sort.direction}`,
             page,
@@ -180,9 +181,37 @@ export function ApplicationLogsPage({
       render: (row) => <Badge tone={statusTone(row.responseStatus)} dot>{row.responseStatus}</Badge>,
     },
     {
+      key: 'usageCount',
+      header: 'Usage',
+      align: 'right',
+      sortValue: (row) => row.usageCount,
+      render: (row) => <span className="font-semibold tabular-nums text-slate-900">{formatNumber(row.usageCount)}</span>,
+    },
+    {
+      key: 'durationMs',
+      header: 'Duration',
+      align: 'right',
+      hideBelow: 'md',
+      sortValue: (row) => row.durationMs ?? -1,
+      render: (row) => <span className="tabular-nums text-[11px] text-slate-500">{formatDuration(row.durationMs)}</span>,
+    },
+    {
+      key: 'serverName',
+      header: 'Server',
+      hideBelow: 'md',
+      filterable: true,
+      sortValue: (row) => row.serverName ?? '',
+      render: (row) => (
+        <span className="inline-flex items-center gap-1.5 text-slate-600">
+          <ServerCog className="h-3.5 w-3.5 text-slate-400" />
+          <span className="truncate font-mono text-[11px]">{row.serverName || '—'}</span>
+        </span>
+      ),
+    },
+    {
       key: 'databaseName',
       header: 'Database',
-      hideBelow: 'md',
+      hideBelow: 'lg',
       filterable: true,
       sortValue: (row) => row.databaseName ?? '',
       render: (row) => (
@@ -191,6 +220,19 @@ export function ApplicationLogsPage({
           <span className="truncate">{row.databaseName || '—'}</span>
         </span>
       ),
+    },
+    {
+      key: 'message',
+      header: 'Message',
+      hideBelow: 'xl',
+      render: (row) =>
+        row.message ? (
+          <span className="block max-w-[16rem] truncate text-[11px] text-slate-500" title={row.message}>
+            {row.message}
+          </span>
+        ) : (
+          <span className="text-slate-300">—</span>
+        ),
     },
     {
       key: 'createdAt',
@@ -321,6 +363,7 @@ export function ApplicationLogsPage({
                   appName: facets.data?.appName ?? [],
                   functionName: facets.data?.functionName ?? [],
                   responseStatus: ['Success', 'Error'],
+                  serverName: facets.data?.serverName ?? [],
                   databaseName: facets.data?.databaseName ?? [],
                 },
                 selected: colFilters,

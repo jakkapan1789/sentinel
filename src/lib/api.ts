@@ -18,6 +18,8 @@ import type {
   IngestionSourcePatch,
   IngestionSecret,
   IngestionSource,
+  WhitelistAck,
+  WhitelistAckCreate,
   WhitelistEntry,
   WhitelistInput,
 } from '../types';
@@ -26,7 +28,7 @@ export type IpMatchQuery = {
   minUsage?: number;
   bu?: string;
   country?: string;
-  whitelisted?: string;
+  matched?: string;
   search?: string;
   sort?: string;
   page?: number;
@@ -80,6 +82,7 @@ export const api = {
     app?: string;
     clientIp?: string;
     functionName?: string;
+    serverName?: string;
     databaseName?: string;
     sort?: string;
     page?: number;
@@ -103,6 +106,11 @@ export const api = {
 
   bulkAddWhitelist: (body: WhitelistInput[]) =>
     request<{ created: number; skipped: number }>('/api/v1/whitelist/bulk', { method: 'POST', body: JSON.stringify(body) }),
+
+  createWhitelistAck: (body: WhitelistAckCreate) =>
+    request<WhitelistAck>('/api/v1/whitelist/ack-requests', { method: 'POST', body: JSON.stringify(body) }),
+
+  whitelistAcks: () => request<WhitelistAck[]>('/api/v1/whitelist/ack-requests'),
 
   ipMatches: (params: IpMatchQuery) => request<PagedResult<IpMatch>>(`/api/v1/ip-matches${qs(params)}`),
 

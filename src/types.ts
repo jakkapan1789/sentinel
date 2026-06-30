@@ -66,6 +66,29 @@ export interface WhitelistEntry {
   updatedAt: string;
 }
 
+export interface WhitelistAckCreate {
+  entryIds: number[];
+  recipient: string | null;
+  subject: string | null;
+  intro: string | null;
+}
+
+export interface WhitelistAck {
+  id: number;
+  token: string;
+  status: 'pending' | 'acknowledged';
+  recipient: string | null;
+  subject: string | null;
+  confirmUrl: string;
+  html: string;
+  itemCount: number;
+  activatedCount: number;
+  createdBy: string;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedNote: string | null;
+}
+
 export interface WhitelistInput {
   ipCidr: string;
   appName: string;
@@ -105,6 +128,7 @@ export interface NetworkLog {
 
 export interface IpMatch {
   ip: string;
+  matched: boolean;
   appUsage: number;
   appRequests: number;
   networkUsage: number;
@@ -117,9 +141,6 @@ export interface IpMatch {
   appName: string | null;
   server: string | null;
   country: string | null;
-  isWhitelisted: boolean;
-  whitelistStatus: string | null;
-  whitelistCidr: string | null;
   lastSeen: string;
 }
 
@@ -129,9 +150,9 @@ export interface IpMatchFacets {
 }
 
 export interface IpMatchStats {
+  total: number;
   matched: number;
-  aboveThreshold: number;
-  notWhitelisted: number;
+  unmatched: number;
   combinedUsage: number;
 }
 
@@ -139,6 +160,7 @@ export interface AppLogFacets {
   clientIp: string[];
   appName: string[];
   functionName: string[];
+  serverName: string[];
   databaseName: string[];
 }
 

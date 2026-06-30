@@ -1,16 +1,14 @@
 import {
   ChevronDown,
   ChevronRight,
-  GitCompareArrows,
-  LayoutDashboard,
   LogOut,
   Menu,
-  Network,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
   ServerCog,
   ShieldCheck,
+  User,
   Webhook,
   X,
 } from 'lucide-react';
@@ -34,11 +32,8 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'General',
     items: [
-      { key: 'dashboard', label: 'Dashboard', description: 'Overview & posture', icon: LayoutDashboard },
       { key: 'whitelist', label: 'Whitelist', description: 'Allowed connections', icon: ShieldCheck },
-      { key: 'ip-match', label: 'IP Match', description: 'Reconcile app vs network', icon: GitCompareArrows },
       { key: 'application-logs', label: 'Application IP Logs', description: 'Service-side traffic', icon: ServerCog },
-      { key: 'network-logs', label: 'Network IP Logs', description: 'Edge / source traffic', icon: Network },
     ],
   },
   {
@@ -158,7 +153,7 @@ export function Layout({
             <div className="mb-4 flex min-h-7 shrink-0 items-center justify-between gap-3">
               <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
                 <button
-                  onClick={() => onNavigate('dashboard')}
+                  onClick={() => onNavigate('whitelist')}
                   className="font-medium text-slate-400 transition hover:text-slate-600"
                 >
                   Home
@@ -227,12 +222,12 @@ function ProfileMenu() {
           open ? 'border-teal-300 bg-teal-50/40' : 'border-slate-200 bg-white hover:bg-slate-50'
         }`}
       >
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-xs font-semibold text-white">
-          JP
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-500 text-xs font-semibold text-white">
+          <User className="h-4 w-4" />
         </span>
         <div className="hidden text-left leading-tight sm:block">
-          <p className="whitespace-nowrap text-[13px] font-semibold text-slate-800">Jakkapan Pakeerat</p>
-          <p className="whitespace-nowrap text-[11px] text-slate-400">Lead System Analyst</p>
+          <p className="whitespace-nowrap text-[13px] font-semibold text-slate-800">Anonymous</p>
+          <p className="whitespace-nowrap text-[11px] text-slate-400">Guest access</p>
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -243,17 +238,17 @@ function ProfileMenu() {
           className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-1.5 ring-1 ring-slate-900/5 animate-pop-in"
         >
           <div className="mb-1 flex items-center gap-2.5 border-b border-slate-100 px-2.5 pb-2.5 pt-1.5">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-sm font-semibold text-white">
-              JP
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-500 text-sm font-semibold text-white">
+              <User className="h-5 w-5" />
             </span>
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-[13px] font-semibold text-slate-800">Jakkapan Pakeerat</p>
-              <p className="truncate text-[11px] font-medium text-teal-600">Lead System Analyst</p>
-              <p className="truncate text-[11px] text-slate-400">jakkapan.pakeerat@gmail.com</p>
+              <p className="truncate text-[13px] font-semibold text-slate-800">Anonymous</p>
+              <p className="truncate text-[11px] font-medium text-slate-500">Guest access</p>
+              <p className="truncate text-[11px] text-slate-400">Not signed in</p>
             </div>
           </div>
           <MenuItem icon={LogOut} label="Sign out" tone="danger" disabled onClick={() => setOpen(false)} />
-          <p className="px-2.5 pb-1 pt-1.5 text-[11px] text-slate-400">Demo mode — login coming soon</p>
+          <p className="px-2.5 pb-1 pt-1.5 text-[11px] text-slate-400">Anonymous mode — authentication coming soon</p>
         </div>
       )}
     </div>
@@ -320,7 +315,7 @@ function Sidebar({
         </span>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-bold tracking-tight text-slate-900">Sentinel</p>
+            <p className="truncate text-[13px] font-bold tracking-tight text-slate-900">Sentinel</p>
             <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-600">
               Whitelist Center
             </p>
@@ -355,7 +350,7 @@ function Sidebar({
                   onClick={() => onNavigate(item.key)}
                   title={collapsed ? item.label : undefined}
                   aria-label={item.label}
-                  className={`group relative flex w-full items-center rounded-lg text-left text-[11px] tracking-tight transition ${
+                  className={`group relative flex w-full items-center rounded-lg text-left text-[10px] tracking-tight transition ${
                     collapsed ? 'justify-center px-0 py-2' : 'gap-2 px-2.5 py-1.5'
                   } ${
                     isActive

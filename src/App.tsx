@@ -14,7 +14,7 @@ const VIEWS: ViewKey[] = ['dashboard', 'whitelist', 'ip-match', 'application-log
 function readRoute(): { view: ViewKey; bu: string | null } {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [segment, ...rest] = raw.split('/');
-  const view = (VIEWS as string[]).includes(segment) ? (segment as ViewKey) : 'dashboard';
+  const view = (VIEWS as string[]).includes(segment) ? (segment as ViewKey) : 'whitelist';
   const bu = view === 'application-logs' && rest.length > 0 ? decodeURIComponent(rest.join('/')) : null;
   return { view, bu };
 }

@@ -373,7 +373,7 @@ export function KpiCard({
         <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white ${kpiTiles[tone]}`}>
           <Icon className="h-4.5 w-4.5" />
         </span>
-        <span className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</span>
+        <span className="text-xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</span>
       </div>
       <div>
         <p className="text-xs font-semibold text-slate-700">{label}</p>
